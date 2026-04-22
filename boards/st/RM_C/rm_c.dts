@@ -24,21 +24,23 @@
 	/* 3 路 RGB LED，共阳极 + N-MOSFET 拉地，高电平点亮 */
 	leds: leds {
 		compatible = "gpio-leds";
-		status = "disabled";
 
 		led_r: led_r {
 			gpios = <&gpioh 12 GPIO_ACTIVE_HIGH>;
 			label = "LED_R";
+			status = "disabled";
 		};
 
 		led_g: led_g {
 			gpios = <&gpioh 11 GPIO_ACTIVE_HIGH>;
 			label = "LED_G";
+			status = "okay";
 		};
 
 		led_b: led_b {
 			gpios = <&gpioh 10 GPIO_ACTIVE_HIGH>;
 			label = "LED_B";
+			status = "disabled";
 		};
 	};
 
