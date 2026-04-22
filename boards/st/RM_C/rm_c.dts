@@ -49,7 +49,10 @@
 
 		user_button: button {
 			label = "KEY";
-			gpios = <&gpioa 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			/* 板载已有外部偏置网络（VCC_BAT 分压 + 1K 下拉），
+			 * 不使能 MCU 内部上拉，避免与外部电阻冲突造成电平漂移。
+			 */
+			gpios = <&gpioa 0 GPIO_ACTIVE_LOW>;
 			zephyr,code = <INPUT_KEY_0>;
 		};
 	};
@@ -90,12 +93,14 @@
 };
 
 /* ------------------------- 串口 ------------------------- */
-/* 丝印 UART2 = 芯片 USART1: PA9 TX / PB7 RX, 4-pin 接口 */
+/* 丝印 UART2 = 芯片 USART1: PA9 TX / PB7 RX, 4-pin 接口
+ * 默认作为 zephyr,console / zephyr,shell-uart，上电即可使用。
+ */
 &usart1 {
 	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pb7>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
-	status = "disabled";
+	status = "okay";
 };
 
 /* 丝印 UART1 = 芯片 USART6: PG14 TX / PG9 RX, 3-pin 接口（常接裁判系统） */
