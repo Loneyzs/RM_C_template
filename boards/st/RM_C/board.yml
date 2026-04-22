@@ -1,0 +1,6 @@
+board:
+  name: rm_c
+  full_name: RoboMaster Development Board Type C
+  vendor: st
+  socs:
+    - name: stm32f407xx

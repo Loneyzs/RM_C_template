@@ -1,0 +1,205 @@
+/*
+ * Copyright (c) 2026 RoboMaster C-Type Zephyr Adaptation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/f4/stm32f407Xg.dtsi>
+#include <st/f4/stm32f407i(e-g)hx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "RoboMaster Development Board Type C";
+	compatible = "st,robomaster-c";
+
+	chosen {
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,dtcm = &ccm0;
+	};
+
+	/* 3 路 RGB LED，共阳极 + N-MOSFET 拉地，高电平点亮 */
+	leds: leds {
+		compatible = "gpio-leds";
+		status = "disabled";
+
+		led_r: led_r {
+			gpios = <&gpioh 12 GPIO_ACTIVE_HIGH>;
+			label = "LED_R";
+		};
+
+		led_g: led_g {
+			gpios = <&gpioh 11 GPIO_ACTIVE_HIGH>;
+			label = "LED_G";
+		};
+
+		led_b: led_b {
+			gpios = <&gpioh 10 GPIO_ACTIVE_HIGH>;
+			label = "LED_B";
+		};
+	};
+
+	/* 板载用户按键，按下为低 */
+	keys: gpio_keys {
+		compatible = "gpio-keys";
+		status = "disabled";
+
+		user_button: button {
+			label = "KEY";
+			gpios = <&gpioa 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	aliases {
+		led0 = &led_r;
+		led1 = &led_g;
+		led2 = &led_b;
+		sw0 = &user_button;
+	};
+};
+
+/* ------------------------- 时钟系统 ------------------------- */
+/* HSE = 12 MHz 外部晶振, 目标 SYSCLK = 168 MHz
+ * PLL: VCO_in = 12/12 = 1 MHz, VCO_out = 1*336 = 336 MHz
+ *      SYSCLK = 336/2 = 168 MHz, USB/SDIO = 336/7 ≈ 48 MHz
+ */
+&clk_hse {
+	clock-frequency = <DT_FREQ_M(12)>;
+	status = "okay";
+};
+
+&pll {
+	div-m = <12>;
+	mul-n = <336>;
+	div-p = <2>;
+	div-q = <7>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(168)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <4>;
+	apb2-prescaler = <2>;
+};
+
+/* ------------------------- 串口 ------------------------- */
+/* 丝印 UART2 = 芯片 USART1: PA9 TX / PB7 RX, 4-pin 接口 */
+&usart1 {
+	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pb7>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "disabled";
+};
+
+/* 丝印 UART1 = 芯片 USART6: PG14 TX / PG9 RX, 3-pin 接口（常接裁判系统） */
+&usart6 {
+	pinctrl-0 = <&usart6_tx_pg14 &usart6_rx_pg9>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "disabled";
+};
+
+/* ------------------------- CAN 总线 ------------------------- */
+/* CAN1: PD1 TX / PD0 RX (2-pin 接口) */
+&can1 {
+	pinctrl-0 = <&can1_tx_pd1 &can1_rx_pd0>;
+	pinctrl-names = "default";
+	status = "disabled";
+};
+
+/* CAN2: PB6 TX / PB5 RX (4-pin 接口, 带 5V 供电) */
+&can2 {
+	pinctrl-0 = <&can2_tx_pb6 &can2_rx_pb5>;
+	pinctrl-names = "default";
+	status = "disabled";
+};
+
+/* ------------------------- PWM 输出 ------------------------- */
+/* PWM1~4: TIM1_CH1~4 => PE9 / PE11 / PE13 / PE14 */
+&timers1 {
+	status = "disabled";
+
+	pwm1: pwm {
+		status = "disabled";
+		pinctrl-0 = <&tim1_ch1_pe9 &tim1_ch2_pe11
+			     &tim1_ch3_pe13 &tim1_ch4_pe14>;
+		pinctrl-names = "default";
+	};
+};
+
+/* PWM5~7: TIM8_CH1~3 => PC6 / PI6 / PI7 */
+&timers8 {
+	status = "disabled";
+
+	pwm8: pwm {
+		status = "disabled";
+		pinctrl-0 = <&tim8_ch1_pc6 &tim8_ch2_pi6 &tim8_ch3_pi7>;
+		pinctrl-names = "default";
+	};
+};
+
+/* IMU 恒温加热: TIM10_CH1 => PF6 (高电平满功率 0.58W) */
+&timers10 {
+	status = "disabled";
+
+	pwm_heater: pwm {
+		status = "disabled";
+		pinctrl-0 = <&tim10_ch1_pf6>;
+		pinctrl-names = "default";
+	};
+};
+
+/* ------------------------- 板载传感器 ------------------------- */
+/* SPI1: SCK=PB3, MOSI=PA7, MISO=PB4 (BMI088 6-axis IMU)
+ *   CS1_Accel (BMI088 accel)  = PA4, active low
+ *   CS1_Gyro  (BMI088 gyro)   = PB0, active low
+ *   INT1_Accel                = PC4 (data ready / motion)
+ *   INT1_Gyro                 = PC5 (data ready)
+ *   BMI088 datasheet allows up to 10 MHz SPI clock.
+ */
+&spi1 {
+	pinctrl-0 = <&spi1_sck_pb3 &spi1_mosi_pa7 &spi1_miso_pb4>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>,
+		   <&gpiob 0 GPIO_ACTIVE_LOW>;
+	status = "disabled";
+
+	bmi088_accel: bmi088-accel@0 {
+		compatible = "bosch,bmi088-accel";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		int-gpios = <&gpioc 4 GPIO_ACTIVE_HIGH>;
+	};
+
+	bmi088_gyro: bmi088-gyro@1 {
+		compatible = "bosch,bmi088-gyro";
+		reg = <1>;
+		spi-max-frequency = <10000000>;
+		int-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+/* I2C3: SCL=PA8, SDA=PC9 (IST8310 磁力计)
+ *   Fast-mode 400kHz; 默认 I2C 地址 0x0E (CAD0/CAD1 硬连接)。
+ *   RSTN = PG6 (active low), DRDY = PG3 (active high)
+ */
+&i2c3 {
+	pinctrl-0 = <&i2c3_scl_pa8 &i2c3_sda_pc9>;
+	pinctrl-names = "default";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	status = "disabled";
+
+	ist8310: ist8310@e {
+		compatible = "robomaster,ist8310";
+		reg = <0x0e>;
+		reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
+		drdy-gpios  = <&gpiog 3 GPIO_ACTIVE_HIGH>;
+	};
+};

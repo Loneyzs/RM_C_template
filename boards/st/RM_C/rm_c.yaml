@@ -1,0 +1,17 @@
+identifier: rm_c
+name: RoboMaster Development Board Type C (STM32F407IGH6)
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+ram: 192
+flash: 1024
+supported:
+  - gpio
+  - can
+  - pwm
+  - i2c
+  - spi
+  - uart
+vendor: st

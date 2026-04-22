@@ -1,0 +1,46 @@
+# Copyright (c) 2026 RoboMaster C-Type Zephyr Adaptation
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+    iSentek IST8310 3-axis geomagnetic sensor - board-local binding.
+
+    The Zephyr tree ships an upstream binding "isentek,ist8310" which only
+    exposes the I2C slave. The RoboMaster C-Type board additionally wires
+    RSTN (hardware reset) and DRDY (data-ready interrupt) to GPIOs, and the
+    project ships a third-party driver that uses both lines.
+
+    Because two yaml files cannot share the same "compatible + on-bus" pair,
+    the board-local compatible is namespaced with the "robomaster" vendor
+    prefix. The out-of-tree driver must match on this string.
+
+    Default I2C address on the RoboMaster C-Type board is 0x0E (set by the
+    CAD0/CAD1 pin strap).
+
+    Example:
+
+        &i2c3 {
+            ist8310: ist8310@e {
+                compatible = "robomaster,ist8310";
+                reg = <0x0e>;
+                reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
+                drdy-gpios  = <&gpiog 3 GPIO_ACTIVE_HIGH>;
+            };
+        };
+
+compatible: "robomaster,ist8310"
+
+include: [i2c-device.yaml, sensor-device.yaml]
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    description: |
+        Hardware reset (RSTN) line. Active low per the IST8310 datasheet;
+        pass GPIO_ACTIVE_LOW. On the RoboMaster C-Type board this is PG6.
+
+  drdy-gpios:
+    type: phandle-array
+    description: |
+        Data-ready (DRDY) interrupt line. Active high per the IST8310
+        datasheet; pass GPIO_ACTIVE_HIGH. On the RoboMaster C-Type board
+        this is PG3.
