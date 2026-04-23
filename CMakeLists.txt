@@ -15,6 +15,9 @@ project(RM_C_Template)
 set(APP_SOURCES
     src/main.c
     src/imu_9axis.c
+    src/test_can_loopback.c
+    src/test_pwm_led.c
+    src/test_imu_uart.c
 )
 
 target_sources(app PRIVATE ${APP_SOURCES})

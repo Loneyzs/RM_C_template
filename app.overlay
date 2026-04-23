@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * 项目级 overlay：在板级 dts 节点默认 disabled 的基础上打开本项目实际用到的
- * 板载 IMU 外设，并暴露应用层需要直接操作的 GPIO / PWM。
+ * 板载外设，并暴露应用层需要直接操作的 GPIO / PWM。
  */
 
 #include <zephyr/dt-bindings/gpio/gpio.h>
@@ -13,16 +13,19 @@
 	/*
 	 * 应用层自管理的 GPIO / PWM：Zephyr 上游 isentek,ist8310 binding 不包含
 	 * RSTN（硬复位）和 DRDY 管脚，BMI088 的恒温加热也需要独立 PWM 通道。
-	 * 通过 zephyr,user 节点以 GPIO/PWM spec 暴露给 C 代码即可，不再自建 binding。
+	 * 测试用 LED (led_g) 通过 alias 访问；闪烁 PWM 额外指向 PWM1 CH1，
+	 * 采样点由应用直接写 period/pulse。
 	 */
 	zephyr,user {
 		ist8310-reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
 		ist8310-drdy-gpios  = <&gpiog 3 GPIO_ACTIVE_HIGH>;
-		pwms = <&pwm_heater 0 1000000 PWM_POLARITY_NORMAL>;
-		pwm-names = "heater";
+		pwms = <&pwm_heater 0 1000000 PWM_POLARITY_NORMAL>,
+		       <&pwm1 0 1000000000 PWM_POLARITY_NORMAL>;
+		pwm-names = "heater", "blink";
 	};
 };
 
+/* ---------------- IMU ---------------- */
 &spi1 {
 	status = "okay";
 };
@@ -43,10 +46,7 @@
 	status = "okay";
 };
 
-/* ---------------- IMU 恒温加热 ---------------- */
-/* TIM10_CH1 => PF6；APB2 Timer clk ≈ 168 MHz。
- * prescaler = 168 - 1 → tick = 1 MHz；period = 1 000 000 ns (1 kHz PWM)。
- */
+/* IMU 恒温加热 TIM10_CH1 => PF6，tick = 1 MHz, PWM 周期 1 kHz */
 &timers10 {
 	status = "okay";
 	st,prescaler = <167>;
@@ -54,4 +54,33 @@
 	pwm_heater: pwm {
 		status = "okay";
 	};
+};
+
+/* ---------------- 测试用外设 ---------------- */
+/* LED_G: 测试线程用软件翻转（PH11 为纯 GPIO，不接 timer 通道） */
+&led_g {
+	status = "okay";
+};
+
+/* PWM1 (TIM1_CH1 @ PE9) 作为闪烁频率源，tick = 20 kHz → 最大 period ≈ 3.27 s */
+&timers1 {
+	status = "okay";
+	st,prescaler = <8399>;
+
+	pwm1: pwm {
+		status = "okay";
+	};
+};
+
+/* USART1 (丝印 UART2, PA9/PB7) 作为 justfloat 数据输出端口 */
+&usart1 {
+	status = "okay";
+	current-speed = <115200>;
+};
+
+/* CAN1 回环测试：bitrate 500 kbit/s，采样点 87.5% */
+&can1 {
+	status = "okay";
+	bitrate = <500000>;
+	sample-point = <875>;
 };
