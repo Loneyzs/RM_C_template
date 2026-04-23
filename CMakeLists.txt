@@ -14,6 +14,7 @@ project(RM_C_Template)
 # 添加源文件
 set(APP_SOURCES
     src/main.c
+    src/imu_9axis.c
 )
 
 target_sources(app PRIVATE ${APP_SOURCES})

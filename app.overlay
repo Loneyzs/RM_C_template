@@ -1,0 +1,57 @@
+/*
+ * Copyright (c) 2026 RoboMaster C-Type Zephyr Adaptation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * 项目级 overlay：在板级 dts 节点默认 disabled 的基础上打开本项目实际用到的
+ * 板载 IMU 外设，并暴露应用层需要直接操作的 GPIO / PWM。
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	/*
+	 * 应用层自管理的 GPIO / PWM：Zephyr 上游 isentek,ist8310 binding 不包含
+	 * RSTN（硬复位）和 DRDY 管脚，BMI088 的恒温加热也需要独立 PWM 通道。
+	 * 通过 zephyr,user 节点以 GPIO/PWM spec 暴露给 C 代码即可，不再自建 binding。
+	 */
+	zephyr,user {
+		ist8310-reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
+		ist8310-drdy-gpios  = <&gpiog 3 GPIO_ACTIVE_HIGH>;
+		pwms = <&pwm_heater 0 1000000 PWM_POLARITY_NORMAL>;
+		pwm-names = "heater";
+	};
+};
+
+&spi1 {
+	status = "okay";
+};
+
+&bmi088_accel {
+	status = "okay";
+};
+
+&bmi088_gyro {
+	status = "okay";
+};
+
+&i2c3 {
+	status = "okay";
+};
+
+&ist8310 {
+	status = "okay";
+};
+
+/* ---------------- IMU 恒温加热 ---------------- */
+/* TIM10_CH1 => PF6；APB2 Timer clk ≈ 168 MHz。
+ * prescaler = 168 - 1 → tick = 1 MHz；period = 1 000 000 ns (1 kHz PWM)。
+ */
+&timers10 {
+	status = "okay";
+	st,prescaler = <167>;
+
+	pwm_heater: pwm {
+		status = "okay";
+	};
+};

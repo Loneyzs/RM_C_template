@@ -6,10 +6,12 @@ CONFIG_ARM_MPU=y
 # Enable HW stack protection
 CONFIG_HW_STACK_PROTECTION=y
 
-# Serial console (通过USART1/丝印UART2，默认disabled由工程自行开启)
-CONFIG_SERIAL=y
+# Console via SEGGER RTT (J-Link RTT Viewer / west debugserver)
+# USART1 (丝印 UART2) 不再作为 console/shell back-end，由应用自由使用。
 CONFIG_CONSOLE=y
-CONFIG_UART_CONSOLE=y
+CONFIG_USE_SEGGER_RTT=y
+CONFIG_RTT_CONSOLE=y
+CONFIG_UART_CONSOLE=n
 
 # GPIO
 CONFIG_GPIO=y

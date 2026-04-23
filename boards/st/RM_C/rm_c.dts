@@ -14,8 +14,11 @@
 	compatible = "st,robomaster-c";
 
 	chosen {
-		zephyr,console = &usart1;
-		zephyr,shell-uart = &usart1;
+		/*
+		 * 控制台与 shell 均走 SEGGER RTT (CONFIG_RTT_CONSOLE / CONFIG_SHELL_BACKEND_RTT)。
+		 * RTT 不是 DT 节点，通过 Kconfig 选择即可，因此 chosen 中不再指向 usart1，
+		 * usart1 (丝印 UART2, PA9/PB7) 被释放给应用层自由使用。
+		 */
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 		zephyr,dtcm = &ccm0;
@@ -64,6 +67,8 @@
 		led1 = &led_g;
 		led2 = &led_b;
 		sw0 = &user_button;
+		uart2 = &usart1;
+		uart1 = &usart6;
 	};
 };
 
@@ -96,13 +101,14 @@
 
 /* ------------------------- 串口 ------------------------- */
 /* 丝印 UART2 = 芯片 USART1: PA9 TX / PB7 RX, 4-pin 接口
- * 默认作为 zephyr,console / zephyr,shell-uart，上电即可使用。
+ * 控制台已切换到 SEGGER RTT，此 UART 释放给应用层自由使用；
+ * 默认保持 disabled，由工程按需在项目级 overlay 中打开。
  */
 &usart1 {
 	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pb7>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
-	status = "okay";
+	status = "disabled";
 };
 
 /* 丝印 UART1 = 芯片 USART6: PG14 TX / PG9 RX, 3-pin 接口（常接裁判系统） */
@@ -170,6 +176,10 @@
  *   INT1_Accel                = PC4 (data ready / motion)
  *   INT1_Gyro                 = PC5 (data ready)
  *   BMI088 datasheet allows up to 10 MHz SPI clock.
+ *
+ *   使用 Zephyr 上游 "bosch,bmi08x-accel" / "bosch,bmi08x-gyro" 驱动 (drivers/sensor/bosch/bmi08x)。
+ *   accel-hz/accel-fs/gyro-hz/gyro-fs 为 binding required property，这里给出默认值，
+ *   项目级 overlay 可按需 override。
  */
 &spi1 {
 	pinctrl-0 = <&spi1_sck_pb3 &spi1_mosi_pa7 &spi1_miso_pb4>;
@@ -179,23 +189,39 @@
 	status = "disabled";
 
 	bmi088_accel: bmi088-accel@0 {
-		compatible = "bosch,bmi088-accel";
+		compatible = "bosch,bmi08x-accel";
 		reg = <0>;
 		spi-max-frequency = <10000000>;
 		int-gpios = <&gpioc 4 GPIO_ACTIVE_HIGH>;
+		accel-hz = "800";
+		accel-fs = <6>;
+		/* INT1: DRDY 映射；push-pull + active-high + output-enable */
+		int1-map-io = <0x01>;
+		int1-conf-io = <0x0A>;
+		/* INT2 未引出；置 0 以满足 driver 对属性的强制存在要求 */
+		int2-map-io = <0x00>;
+		int2-conf-io = <0x00>;
+		status = "disabled";
 	};
 
 	bmi088_gyro: bmi088-gyro@1 {
-		compatible = "bosch,bmi088-gyro";
+		compatible = "bosch,bmi08x-gyro";
 		reg = <1>;
 		spi-max-frequency = <10000000>;
 		int-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
+		gyro-hz = "1000_116";
+		gyro-fs = <2000>;
+		/* INT3 数据就绪中断, push-pull, active-high */
+		int3-4-map-io = <0x01>;
+		int3-4-conf-io = <0x01>;
+		status = "disabled";
 	};
 };
 
 /* I2C3: SCL=PA8, SDA=PC9 (IST8310 磁力计)
  *   Fast-mode 400kHz; 默认 I2C 地址 0x0E (CAD0/CAD1 硬连接)。
- *   RSTN = PG6 (active low), DRDY = PG3 (active high)
+ *   使用 Zephyr 上游 "isentek,ist8310" 驱动 (drivers/sensor/ist8310)，
+ *   其不管理 RSTN/DRDY 引脚；应用层通过 zephyr,user 暴露的 GPIO 自行完成复位序列。
  */
 &i2c3 {
 	pinctrl-0 = <&i2c3_scl_pa8 &i2c3_sda_pc9>;
@@ -204,9 +230,8 @@
 	status = "disabled";
 
 	ist8310: ist8310@e {
-		compatible = "robomaster,ist8310";
+		compatible = "isentek,ist8310";
 		reg = <0x0e>;
-		reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
-		drdy-gpios  = <&gpiog 3 GPIO_ACTIVE_HIGH>;
+		status = "disabled";
 	};
 };
