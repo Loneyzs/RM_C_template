@@ -18,6 +18,7 @@ LOG_MODULE_REGISTER(test_imu_temp, LOG_LEVEL_INF);
 
 #define IMU_TEMP_TEST_PERIOD_MS 500U
 #define IMU_TEMP_HEATER_DUTY    50U
+#define IMU_TEMP_TEST_FORCE_FULL_ON 1
 
 K_THREAD_STACK_DEFINE(imu_temp_test_stack, 1536);
 static struct k_thread imu_temp_test_thread_data;
@@ -36,9 +37,10 @@ static void imu_temp_test_thread(void *a, void *b, void *c)
 		int rc = imu_9axis_sample(&sample);
 		if (rc == 0) {
 			minimal_test_serial_printf(
-				"IMU_TEMP seq=%lu temp=%.2f roll=%.3f pitch=%.3f yaw=%.3f\r\n",
+				"IMU_TEMP seq=%lu temp=%.2f heater=%.1f roll=%.3f pitch=%.3f yaw=%.3f\r\n",
 				(unsigned long)seq,
 				(double)sample.temp_c,
+				(double)imu_9axis_get_heater_output(),
 				(double)sample.euler[IMU_EULER_ROLL],
 				(double)sample.euler[IMU_EULER_PITCH],
 				(double)sample.euler[IMU_EULER_YAW]);
@@ -71,6 +73,17 @@ int test_imu_temp_start(void)
 		LOG_ERR("imu_9axis_init failed: %d", rc);
 		return rc;
 	}
+
+#if IMU_TEMP_TEST_FORCE_FULL_ON
+	imu_9axis_enable_heater_pid(false);
+	rc = imu_9axis_set_heater_duty(100U);
+	if (rc < 0) {
+		LOG_ERR("set heater full on failed: %d", rc);
+		return rc;
+	}
+#else
+	imu_9axis_enable_heater_pid(true);
+#endif
 
 	k_thread_create(&imu_temp_test_thread_data, imu_temp_test_stack,
 			K_THREAD_STACK_SIZEOF(imu_temp_test_stack),

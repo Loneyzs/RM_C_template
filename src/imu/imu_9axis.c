@@ -55,6 +55,7 @@ struct imu_filter_state {
 
 static struct imu_filter_state filter_state;
 static bool heater_available;
+static bool heater_pid_enabled = true;
 static float heater_pid_integral;
 static float heater_pid_last_error;
 static uint64_t heater_pid_last_ns;
@@ -123,6 +124,9 @@ static void heater_pid_update(float temp_c, uint64_t now_ns)
 	int rc;
 
 	if (!heater_available || isnan(temp_c)) {
+		return;
+	}
+	if (!heater_pid_enabled) {
 		return;
 	}
 
@@ -350,6 +354,19 @@ int imu_9axis_set_heater_duty(uint8_t duty_percent)
 	}
 
 	return apply_heater_duty(clamp_duty(duty_percent));
+}
+
+void imu_9axis_enable_heater_pid(bool enable)
+{
+	heater_pid_enabled = enable;
+	if (!enable) {
+		heater_pid_reset();
+	}
+}
+
+float imu_9axis_get_heater_output(void)
+{
+	return heater_pid_output;
 }
 
 int imu_9axis_sample(imu_9axis_sample_t *out)

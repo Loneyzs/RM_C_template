@@ -8,6 +8,7 @@
 #define APP_IMU_9AXIS_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
 
@@ -90,6 +91,8 @@ int imu_9axis_sample(imu_9axis_sample_t *out);
  * @retval 0 成功；其它为底层 pwm_set() 错误码。
  */
 int imu_9axis_set_heater_duty(uint8_t duty_percent);
+void imu_9axis_enable_heater_pid(bool enable);
+float imu_9axis_get_heater_output(void);
 
 #ifdef __cplusplus
 }
