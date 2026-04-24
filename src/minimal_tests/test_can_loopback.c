@@ -1,30 +1,22 @@
 /*
- * Copyright (c) 2026 RoboMaster C-Type Zephyr Adaptation
- *
- * SPDX-License-Identifier: Apache-2.0
- *
- * CAN1 硬件回环测试：
- *   · 将 CAN1 置入 LOOPBACK 模式；
- *   · 独立线程周期（500 ms）发送一个 0x123 ID 的 8 字节帧；
- *   · 通过 CAN filter 接收该帧，校验 payload 单调递增计数；
- *   · 结果经 LOG 输出。
- *
- * 硬件引脚：CAN1 TX=PD1 / RX=PD0（板级 dts 已定义 pinctrl）。
- * overlay 中将 can1 置 okay、bitrate=500 kbit/s。
+ * CAN1 硬件回环最小测试。
  */
 
 #include "unit_tests.h"
 
-#include <zephyr/kernel.h>
+#include <stdbool.h>
+#include <stdint.h>
+
 #include <zephyr/device.h>
 #include <zephyr/drivers/can.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(test_can, LOG_LEVEL_INF);
 
-#define CAN_NODE        DT_NODELABEL(can1)
-#define TEST_CAN_ID     0x123U
-#define TX_PERIOD_MS    500
+#define CAN_NODE DT_NODELABEL(can1)
+#define TEST_CAN_ID 0x123U
+#define TX_PERIOD_MS 500
 
 static const struct device *const can_dev = DEVICE_DT_GET(CAN_NODE);
 
@@ -62,9 +54,11 @@ static void can_test_thread(void *a, void *b, void *c)
 
 		if (k_msgq_get(&rx_msgq, &rx_frame, K_MSEC(200)) == 0) {
 			bool ok = (rx_frame.id == TEST_CAN_ID) && (rx_frame.dlc == 8);
+
 			for (int i = 0; ok && i < 8; i++) {
 				ok = rx_frame.data[i] == (uint8_t)(tx_count + i);
 			}
+
 			if (ok) {
 				rx_ok++;
 			} else {
@@ -113,6 +107,7 @@ int test_can_loopback_start(void)
 		.mask = CAN_STD_ID_MASK,
 		.flags = 0,
 	};
+
 	rc = can_add_rx_filter_msgq(can_dev, &rx_msgq, &filter);
 	if (rc < 0) {
 		LOG_ERR("can_add_rx_filter_msgq failed: %d", rc);

@@ -2,31 +2,39 @@
  * Copyright (c) 2026 RoboMaster C-Type Zephyr Adaptation
  *
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * 当前主程序只启动 BMI088 和 IST8310 的独立最小测试。
  */
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-#include "imu_9axis.h"
 #include "unit_tests.h"
 
 LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 
-#define HEATER_DEFAULT_DUTY  50U
-
 int main(void)
 {
-	LOG_INF("RM_C_Template boot: STM32F407IGH6 @ 168 MHz, console via SEGGER RTT");
+	int rc;
 
-	if (imu_9axis_init(HEATER_DEFAULT_DUTY) < 0) {
-		LOG_ERR("IMU 9-axis init failed — IMU-dependent tests will be skipped");
-	} else {
-		test_imu_uart_start();
+	LOG_INF("=== IMU minimal tests: BMI088 + IST8310 ===");
+	k_msleep(200);
+
+	uart_minimal_test();
+
+	rc = test_bmi088_minimal_start();
+	if (rc < 0) {
+		LOG_ERR("BMI088 minimal test start failed: %d", rc);
 	}
 
-	test_can_loopback_start();
-	test_pwm_led_start();
+	rc = test_ist8310_minimal_start();
+	if (rc < 0) {
+		LOG_ERR("IST8310 minimal test start failed: %d", rc);
+	}
 
-	LOG_INF("Unit-test threads launched; main returns to idle");
+	while (1) {
+		k_msleep(1000);
+	}
+
 	return 0;
 }

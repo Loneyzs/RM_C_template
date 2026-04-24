@@ -11,21 +11,21 @@
 extern "C" {
 #endif
 
-/**
- * @file
- * @brief 三个快速单元测试线程启动入口。
+/*
+ * 最小测试入口。
  *
- * 调用者（通常是 main）在完成板级硬件初始化后依次触发：
- *   - test_can_loopback_start()：启动 CAN1 硬件回环收发线程
- *   - test_pwm_led_start()     ：启动 PWM1 频率输出 + LED_G 软件翻转线程
- *   - test_imu_uart_start()    ：启动 IMU 欧拉角 → USART1 (JustFloat) 线程
- *
- * 每个 start 函数都是幂等的：同一进程内重复调用只会创建一个线程。
+ * 当前 main 只启动 BMI088 和 IST8310 的独立最小测试。
+ * 其余接口继续保留，便于后续单独回归。
  */
 
 int test_can_loopback_start(void);
 int test_pwm_led_start(void);
 int test_imu_uart_start(void);
+int test_bmi088_minimal_start(void);
+int test_ist8310_minimal_start(void);
+
+/* 最小 UART 测试：只验证 COM11 串口链路。 */
+void uart_minimal_test(void);
 
 #ifdef __cplusplus
 }

@@ -1,42 +1,25 @@
 /*
- * Copyright (c) 2026 RoboMaster C-Type Zephyr Adaptation
- *
- * SPDX-License-Identifier: Apache-2.0
- *
- * IMU 欧拉角 → USART1 (丝印 UART2) JustFloat 输出：
- *
- *   JustFloat 帧格式（小端序）：
- *     [chan0 float LE][chan1 float LE]...[chanN-1 float LE][00 00 80 7F]
- *   其中末 4 字节为 NaN/Inf 样式帧尾，供上位机划分帧边界。
- *
- *   本测试发送 3 通道：
- *     ch0 = roll  (rad)
- *     ch1 = pitch (rad)
- *     ch2 = yaw   (rad)
- *
- *   欧拉角使用最简单的加速度+磁力计解算（未做陀螺融合，仅用于接口回环验证）：
- *     roll  = atan2(ay, az)
- *     pitch = atan2(-ax, sqrt(ay^2 + az^2))
- *     yaw   = atan2(-my * cos(roll) + mz * sin(roll),
- *                   mx * cos(pitch) + my * sin(pitch) * sin(roll) + mz * sin(pitch) * cos(roll))
+ * 旧的九轴融合 UART 回环测试，保留但默认不在 main 中启用。
  */
 
 #include "unit_tests.h"
 #include "imu_9axis.h"
 
 #include <math.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 
-#include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
 
 LOG_MODULE_REGISTER(test_imu_uart, LOG_LEVEL_INF);
 
-#define UART_NODE       DT_NODELABEL(usart1)
-#define SAMPLE_PERIOD_MS 20   /* 50 Hz 输出 */
+#define UART_NODE DT_NODELABEL(usart1)
+#define SAMPLE_PERIOD_MS 20
 
 static const struct device *const uart_dev = DEVICE_DT_GET(UART_NODE);
 
@@ -44,7 +27,7 @@ K_THREAD_STACK_DEFINE(imu_uart_stack, 1536);
 static struct k_thread imu_uart_thread_data;
 static bool started;
 
-static const uint8_t justfloat_tail[4] = { 0x00, 0x00, 0x80, 0x7F };
+static const uint8_t justfloat_tail[4] = {0x00, 0x00, 0x80, 0x7F};
 
 static void uart_write_bytes(const uint8_t *buf, size_t len)
 {
@@ -55,9 +38,6 @@ static void uart_write_bytes(const uint8_t *buf, size_t len)
 
 static void send_justfloat(const float *channels, size_t n_channels)
 {
-	/* STM32 / Cortex-M 本身是 little-endian，float 按内存序写出即为 LE。
-	 * 为了便于阅读意图保留显式小端处理，使用 sys_put_le32。
-	 */
 	for (size_t i = 0; i < n_channels; i++) {
 		uint8_t bytes[4];
 		uint32_t raw;
@@ -76,7 +56,7 @@ static void compute_euler(const imu_9axis_sample_t *s,
 	float ay = s->accel[1];
 	float az = s->accel[2];
 
-	*roll  = atan2f(ay, az);
+	*roll = atan2f(ay, az);
 	*pitch = atan2f(-ax, sqrtf(ay * ay + az * az));
 
 	float mx = s->mag[0];
@@ -103,23 +83,32 @@ static void imu_uart_thread(void *a, void *b, void *c)
 	uint32_t fail_count = 0;
 	uint32_t ok_count = 0;
 
+	float test[3] = {1.0f, 2.0f, 3.0f};
+	send_justfloat(test, ARRAY_SIZE(test));
+
 	while (1) {
 		int rc = imu_9axis_sample(&s);
 		if (rc == 0) {
 			float roll, pitch, yaw;
 
 			compute_euler(&s, &roll, &pitch, &yaw);
-			float chans[3] = { roll, pitch, yaw };
+			float chans[3] = {roll, pitch, yaw};
 
 			send_justfloat(chans, ARRAY_SIZE(chans));
 			ok_count++;
-			if ((ok_count % 200U) == 0U) {
+			if ((ok_count % 50U) == 0U) {
 				LOG_INF("justfloat ok=%u fail=%u last=(%.3f,%.3f,%.3f)",
 					ok_count, fail_count,
 					(double)roll, (double)pitch, (double)yaw);
 			}
 		} else {
 			fail_count++;
+			float zeros[3] = {0.0f, 0.0f, 0.0f};
+			send_justfloat(zeros, ARRAY_SIZE(zeros));
+
+			if ((fail_count % 10U) == 0U) {
+				LOG_WRN("IMU sample failed %u times (rc=%d)", fail_count, rc);
+			}
 		}
 
 		k_msleep(SAMPLE_PERIOD_MS);
@@ -143,6 +132,6 @@ int test_imu_uart_start(void)
 	k_thread_name_set(&imu_uart_thread_data, "test_imu_uart");
 
 	started = true;
-	LOG_INF("IMU→USART1 JustFloat test started @ %d ms", SAMPLE_PERIOD_MS);
+	LOG_INF("IMU->USART1 JustFloat test started @ %d ms", SAMPLE_PERIOD_MS);
 	return 0;
 }
