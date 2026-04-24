@@ -1,173 +1,117 @@
-# IMU 适配状态与接口说明（BMI088 + IST8310）
+# IMU 参数与调试说明
 
-本文说明 RoboMaster C 型板在当前 Zephyr 工程中的 IMU 适配状态、最小测试结论，以及九轴接口层与加热控制的当前边界。
+本文只关注当前工程中 `BMI088 + IST8310` 九轴接口的参数、标定和调试边界。底层 SPI/I2C/devicetree 已通过独立最小测试验证，不再作为主要排障对象。
 
-## 1. 当前结论
+## 当前实现
 
-截至当前版本，已经可以确认以下事实：
+入口文件：
 
-* `BMI088 accel` / `BMI088 gyro`：基于 Zephyr 上游 `bosch,bmi08x-*` 驱动的独立最小测试已通过。
-* `IST8310`：基于 Zephyr 上游 `isentek,ist8310` 驱动的独立最小测试已通过。
-* 板级硬件连接、devicetree 配置、SPI1 / I2C3 / UART2(COM11) 观测链路均已验证可用。
-* 当前剩余问题不在底层硬件配置，也不在上游传感器驱动本身，而在九轴聚合/融合的软件层，以及加热 PID 参数整定。
+- 接口定义：[include/imu_9axis.h](</E:/zephyr_repo/RM_C_Template/include/imu_9axis.h:1>)
+- 实现文件：[src/imu/imu_9axis.c](</E:/zephyr_repo/RM_C_Template/src/imu/imu_9axis.c:1>)
+- 默认运行：[src/main.c](</E:/zephyr_repo/RM_C_Template/src/main.c:1>) 启动 `test_imu_justfloat_start()`
 
-这意味着后续排障重点应放在：
+当前融合链路：
 
-1. `src/imu/imu_9axis.c` 的初始化与采样聚合逻辑。
-2. 九轴姿态/融合输出链，而不是底层 BMI088 / IST8310 驱动。
-3. heater 当前以“全开直驱”模式验证，PID 逻辑保留但视为待调状态。
+- BMI088 accel/gyro 三轴坐标直接沿用参考 FreeRTOS 框架，不交换、不取反。
+- 每次上电做 gyro 零偏标定，要求启动时保持静止。
+- accel 平放校准已改为固定参数，不再每次上电自动估计。
+- 姿态融合使用 Mahony 四元数更新，输出 `roll/pitch/yaw`，单位为 `rad`。
+- IST8310 磁力计参与 yaw 修正，但权重较低；未做硬铁/软铁校准前，不应把 yaw 绝对精度视为可靠。
 
-## 2. 当前工程入口
+## 参数区
 
-当前 [src/main.c](</E:/zephyr_repo/RM_C_template/src/main.c:1>) 默认只启动温度最小测试：
+主要参数集中在 [src/imu/imu_9axis.c](</E:/zephyr_repo/RM_C_Template/src/imu/imu_9axis.c:41>)。
 
-* `test_imu_temp_start()`
+### 上电 gyro 零偏
 
-这一步是为了优先确认两件事：
-
-1. `BMI088` 温度读取链路正常；
-2. heater 全开时是否存在可观测温升。
-
-串口输出走 `USART1`（板上丝印 `UART2`），连接电脑 `COM11`，使用 `plink` 等命令行串口工具即可直接观察 ASCII 输出。
-
-## 3. 传感器节点与配置
-
-### 3.1 Devicetree
-
-| 节点 | Compatible | 总线 | 当前状态 |
-|---|---|---|---|
-| `&bmi088_accel` | `bosch,bmi08x-accel` | `SPI1` | `okay` |
-| `&bmi088_gyro`  | `bosch,bmi08x-gyro`  | `SPI1` | `okay` |
-| `&ist8310`      | `isentek,ist8310`    | `I2C3` | `okay` |
-
-板级默认定义在 [boards/st/RM_C/rm_c.dts](</E:/zephyr_repo/RM_C_template/boards/st/RM_C/rm_c.dts:1>)，项目启用与覆盖在 [app.overlay](</E:/zephyr_repo/RM_C_template/app.overlay:1>)。
-
-`zephyr,user` 额外暴露了应用层需要直接控制的资源：
-
-```dts
-zephyr,user {
-    ist8310-reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
-    ist8310-drdy-gpios  = <&gpiog 3 GPIO_ACTIVE_HIGH>;
-    pwms = <&pwm_heater 1 5000000 PWM_POLARITY_NORMAL>,
-           <&pwm1 1 1000000000 PWM_POLARITY_NORMAL>;
-    pwm-names = "heater", "blink";
-};
+```c
+#define IMU_CALIB_SAMPLES                 400U
+#define IMU_CALIB_INTERVAL_MS             2U
+#define IMU_CALIB_MAX_ATTEMPTS            3U
+#define IMU_CALIB_MAX_GYRO_RANGE_RAD_S    0.15f
+#define IMU_CALIB_MAX_ACCEL_NORM_RANGE    0.50f
 ```
+
+含义：
+
+- `IMU_CALIB_SAMPLES * IMU_CALIB_INTERVAL_MS` 决定单次标定耗时，当前约 `800 ms`。
+- `IMU_CALIB_MAX_GYRO_RANGE_RAD_S` 越小，对静止要求越严格。
+- `IMU_CALIB_MAX_ACCEL_NORM_RANGE` 用于判断标定期间是否有明显晃动。
+
+调参建议：
+
+- 如果上电经常提示不稳定，先确认板子确实静止，再把 gyro range 放宽到 `0.20f`。
+- 如果静止 yaw/roll/pitch 仍缓慢漂，优先增加样本数到 `800U`，不要先调 Mahony。
+
+### 固定 accel 平放校准
+
+本次平放 400 点实测均值：
+
+```text
+raw avg = (0.029985, -0.080403, 9.759632) m/s^2
+```
+
+写入固定偏置：
+
+```c
+#define IMU_ACCEL_FLAT_OFFSET_X_MPS2  0.02998547f
+#define IMU_ACCEL_FLAT_OFFSET_Y_MPS2 -0.08040254f
+#define IMU_ACCEL_FLAT_OFFSET_Z_MPS2 -0.04701789f
+```
+
+修正逻辑是 `corrected = raw - offset`，因此平放时目标接近 `(0, 0, 9.80665)`。
 
 注意：
 
-* `TIM10_CH1` 的 PWM 通道号必须为 `1`，不能写成 `0`。
-* 当前 heater PWM 周期已对齐到 `5 ms`（`200 Hz`），以匹配 FreeRTOS 参考工程。
+- 这不是六面加速度标定，只修正“当前安装方向平放”的零点。
+- 如果换板、拆装 IMU 或重新焊接，应重新测一次。
+- 如果只是融合参数调试，不要反复改这三个值。
 
-### 3.2 Kconfig
+### Mahony 融合
 
-当前与 IMU 相关的有效配置以 [prj.conf](</E:/zephyr_repo/RM_C_Template/prj.conf:1>) 为准：
-
-```kconfig
-CONFIG_SENSOR=y
-CONFIG_SENSOR_ASYNC_API=y
-CONFIG_BMI08X=y
-CONFIG_BMI08X_ACCEL_TRIGGER_NONE=y
-CONFIG_BMI08X_GYRO_TRIGGER_NONE=y
-CONFIG_IST8310=y
-CONFIG_SPI=y
-CONFIG_I2C=y
-CONFIG_PWM=y
-CONFIG_GPIO=y
-CONFIG_CBPRINTF_FP_SUPPORT=y
-CONFIG_FPU=y
+```c
+#define IMU_ACCEL_LPF_TAU_S        0.0085f
+#define IMU_ACCEL_CORRECT_MIN_NORM 6.0f
+#define IMU_ACCEL_CORRECT_MAX_NORM 13.0f
+#define IMU_MAHONY_TWO_KP          2.0f
+#define IMU_MAHONY_TWO_KI          0.02f
+#define IMU_MAHONY_MAG_WEIGHT      0.20f
 ```
 
-注意：当前工程**不是** `GLOBAL_THREAD trigger` 模式，而是 `TRIGGER_NONE`。  
-也就是说，`BMI088` 最小测试依赖的是上游驱动的同步 `sensor_sample_fetch()` / `sensor_channel_get()` 路径。
+含义：
 
-## 4. 最小测试说明
+- `IMU_MAHONY_TWO_KP`：姿态误差比例修正，越大收敛越快，也越容易抖。
+- `IMU_MAHONY_TWO_KI`：慢速积分修正，主要压低低频漂移，过大会拖出低频振荡。
+- `IMU_MAHONY_MAG_WEIGHT`：磁力计 yaw 修正权重，未磁校准前建议保持小。
+- `IMU_ACCEL_CORRECT_MIN/MAX_NORM`：加速度模长门限，运动剧烈时跳过 accel 修正，避免把线加速度当重力。
 
-独立最小测试代码位于 [src/minimal_tests](</E:/zephyr_repo/RM_C_template/src/minimal_tests>)。
+建议调试顺序：
 
-### 4.1 当前默认测试：温度最小测试
+1. 静止平放，看 roll/pitch 是否接近 0 且不明显漂移。
+2. 小角度快速倾斜，看回正是否慢；慢则略增 `IMU_MAHONY_TWO_KP`。
+3. 静止数分钟看低频漂移；漂移明显再小幅增加 `IMU_MAHONY_TWO_KI`。
+4. yaw 跳动或受电机/金属影响时，优先降低 `IMU_MAHONY_MAG_WEIGHT`，必要时临时置 `0.0f`。
 
-文件：[imu_temp_test.c](</E:/zephyr_repo/RM_C_template/src/minimal_tests/imu_temp_test.c:1>)
+## 加热参数
 
-测试内容：
+heater PID 仍保留参考框架参数：
 
-* 初始化整合后的 `imu_9axis`
-* 关闭 heater PID
-* 直接将 heater 设为全开
-* 周期输出 `temp_c`、heater 当前输出、以及姿态三轴
-
-示例输出：
-
-```text
-IMU_TEMP seq=22 temp=27.50 heater=5000.0 roll=-0.006 pitch=0.007 yaw=-2.059
+```c
+#define IMU_HEATER_TARGET_TEMP_C      40.0f
+#define IMU_HEATER_PID_KP             1000.0f
+#define IMU_HEATER_PID_KI             20.0f
+#define IMU_HEATER_PID_KD             0.0f
+#define IMU_HEATER_PID_MAX_OUT        2000.0f
+#define IMU_HEATER_PWM_FULL_SCALE     5000.0f
 ```
 
-结论解释：
+当前建议：
 
-* `temp` 非空且稳定，说明温度读取链路正常
-* `heater` 当前应表现为满输出
-* PID 逻辑保留在驱动中，但当前不作为验证基准，状态为“待调”
+- 先用 `imu_temp_test` 验证温升曲线，再恢复 PID 闭环。
+- 如果温度稳定前 gyro 漂移明显，控制侧应等温度接近稳定后再进入高精度模式。
 
-### 4.2 BMI088 最小测试
+## 已知边界
 
-文件：[bmi088_minimal_test.c](</E:/zephyr_repo/RM_C_template/src/minimal_tests/bmi088_minimal_test.c:1>)
-
-测试内容：
-
-* 分别读取 `SENSOR_CHAN_ACCEL_XYZ`
-* 分别读取 `SENSOR_CHAN_GYRO_XYZ`
-* 附带读取 `SENSOR_CHAN_DIE_TEMP`
-* 通过 UART2 输出 ASCII 诊断行
-
-典型结果特征：
-
-* 加速度模长约 `9.8 m/s^2`
-* 静止时陀螺输出接近 `0 rad/s`
-* 温度输出稳定变化
-
-### 4.3 IST8310 最小测试
-
-文件：[ist8310_minimal_test.c](</E:/zephyr_repo/RM_C_template/src/minimal_tests/ist8310_minimal_test.c:1>)
-
-测试内容：
-
-* 独立读取 `SENSOR_CHAN_MAGN_XYZ`
-* 对上游单次采样模式做有限重试
-* 通过 UART2 输出 ASCII 诊断行
-
-典型结果特征：
-
-* 三轴磁场值稳定
-* 模长随朝向变化，但不会恒定为零
-
-## 5. 九轴接口层的当前边界
-
-九轴接口定义当前位于 [include/imu_9axis.h](</E:/zephyr_repo/RM_C_template/include/imu_9axis.h:1>) 和 [src/imu/imu_9axis.c](</E:/zephyr_repo/RM_C_template/src/imu/imu_9axis.c:1>)，它的职责仍然是：
-
-* 聚合 accel / gyro / mag / die-temp 到一个采样帧
-* 管理加热 PWM
-* 对 IST8310 首次单次采样做有限重试
-
-但需要特别注意：
-
-* 当前它还不是“已验证正确”的最终九轴融合实现。
-* 既然最小测试已经证明底层链路可用，后续若 `imu_9axis_*` 路径仍异常，应优先检查聚合层本身，而不是再怀疑底层硬件或 Zephyr 上游驱动。
-
-## 6. 复位策略
-
-当前工程中，IST8310 的硬复位在更早的板级初始化阶段完成，代码位于 [src/imu/imu_board_init.c](</E:/zephyr_repo/RM_C_template/src/imu/imu_board_init.c:1>)。
-
-而 [src/imu/imu_9axis.c](</E:/zephyr_repo/RM_C_template/src/imu/imu_9axis.c:1>) 当前明确假设：
-
-* 不在应用层初始化里再次执行 IST8310 硬复位。
-* 仅依赖上游驱动在 `POST_KERNEL` 完成 probe 和软配置。
-
-后续如果需要重新引入“运行期硬复位”，必须同时补齐“硬复位后的寄存器重配置”，否则会把已配置好的 IST8310 拉回未初始化状态。
-
-## 7. 下一步建议
-
-既然底层最小测试已经通过，下一阶段的合理路径应是：
-
-1. 继续观测 heater 全开状态下的温度趋势。
-2. heater PID 参数暂保留 FreeRTOS 参考值，但明确视为待调状态。
-3. 在确认温升趋势后，再决定是否恢复 PID 闭环测试。
+- 当前不是完整工业级九轴 AHRS；磁力计未做椭球校准，yaw 只能作为弱修正。
+- accel 只做一次平放固定偏置，没有做六面标定。
+- 默认 `imu_justfloat` 周期为 `20 ms`，用于观察足够；进入控制闭环前建议提高到 `1~2 ms` 级任务周期。

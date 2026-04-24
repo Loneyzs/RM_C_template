@@ -16,7 +16,7 @@
 
 #include "unit_tests.h"
 
-LOG_MODULE_REGISTER(test_ist8310_minimal, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(test_ist8310, LOG_LEVEL_INF);
 
 #define IST8310_TEST_PERIOD_MS 300
 #define IST8310_FETCH_RETRIES 5
@@ -85,7 +85,7 @@ static void ist8310_test_thread(void *a, void *b, void *c)
 	}
 }
 
-int test_ist8310_minimal_start(void)
+int test_ist8310_start(void)
 {
 	if (started) {
 		return 0;

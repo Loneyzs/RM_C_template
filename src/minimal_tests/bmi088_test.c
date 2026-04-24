@@ -16,7 +16,7 @@
 
 #include "unit_tests.h"
 
-LOG_MODULE_REGISTER(test_bmi088_minimal, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(test_bmi088, LOG_LEVEL_INF);
 
 #define BMI088_TEST_PERIOD_MS 200
 
@@ -94,7 +94,7 @@ static void bmi088_test_thread(void *a, void *b, void *c)
 	}
 }
 
-int test_bmi088_minimal_start(void)
+int test_bmi088_start(void)
 {
 	if (started) {
 		return 0;

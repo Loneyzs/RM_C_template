@@ -12,7 +12,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(test_can, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(test_can_loopback, LOG_LEVEL_INF);
 
 #define CAN_NODE DT_NODELABEL(can1)
 #define TEST_CAN_ID 0x123U
@@ -118,7 +118,7 @@ int test_can_loopback_start(void)
 			K_THREAD_STACK_SIZEOF(can_tx_stack),
 			can_test_thread, NULL, NULL, NULL,
 			5, 0, K_NO_WAIT);
-	k_thread_name_set(&can_tx_thread_data, "test_can");
+	k_thread_name_set(&can_tx_thread_data, "test_can_loop");
 
 	started = true;
 	LOG_INF("CAN1 loopback test started @ 500 kbit/s");

@@ -2,8 +2,6 @@
  * Copyright (c) 2026 RoboMaster C-Type Zephyr Adaptation
  *
  * SPDX-License-Identifier: Apache-2.0
- *
- * 当前主程序只启动 IMU 温度最小测试。
  */
 
 #include <zephyr/kernel.h>
@@ -17,12 +15,12 @@ int main(void)
 {
 	int rc;
 
-	LOG_INF("=== IMU temperature minimal test ===");
+	LOG_INF("=== IMU JustFloat minimal test ===");
 	k_msleep(200);
 
-	rc = test_imu_temp_start();
+	rc = test_imu_justfloat_start();
 	if (rc < 0) {
-		LOG_ERR("IMU temp test start failed: %d", rc);
+		LOG_ERR("IMU JustFloat test start failed: %d", rc);
 	}
 
 	while (1) {
