@@ -9,12 +9,13 @@ project(RM_C_Template)
 
 set(APP_SOURCES
     src/main.c
-    src/imu_board_init.c
-    src/imu_9axis.c
+    src/imu/imu_board_init.c
+    src/imu/imu_9axis.c
     src/minimal_tests/minimal_test_serial.c
     src/minimal_tests/test_can_loopback.c
     src/minimal_tests/test_pwm_led.c
-    src/minimal_tests/test_imu_uart.c
+    src/minimal_tests/imu_justfloat_test.c
+    src/minimal_tests/imu_temp_test.c
     src/minimal_tests/uart_minimal_test.c
     src/minimal_tests/bmi088_minimal_test.c
     src/minimal_tests/ist8310_minimal_test.c

@@ -1,0 +1,42 @@
+# Available runners configured by board.cmake.
+runners:
+- openocd
+- jlink
+- pyocd
+
+# Default flash runner if --runner is not given.
+flash-runner: openocd
+
+# Default debug runner if --runner is not given.
+debug-runner: openocd
+
+# Common runner configuration values.
+config:
+  board_dir: E:/zephyr_repo/RM_C_template/boards/st/RM_C
+  # Build outputs:
+  elf_file: zephyr.elf
+  hex_file: zephyr.hex
+  bin_file: zephyr.bin
+  # Host tools:
+  gdb: E:/zephyr-sdk-1.0.1/gnu/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb.exe
+  openocd: E:/zephyr-sdk-1.0.1/hosttools/openocd/bin/openocd.exe
+  openocd_search:
+    - E:/zephyr-sdk-1.0.1/hosttools/openocd/share/openocd/scripts
+
+# Runner specific arguments
+args:
+  openocd:
+    - --cmd-load
+    - flash write_image erase
+    - --cmd-verify
+    - verify_image
+    - --cmd-reset-halt
+    - reset halt
+    - --cmd-erase=stm32f2x mass_erase 0
+  jlink:
+    - --dt-flash=y
+    - --device=STM32F407IG
+    - --speed=4000
+  pyocd:
+    - --dt-flash=y
+    - --target=stm32f407ig

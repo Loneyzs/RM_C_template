@@ -21,6 +21,8 @@ extern "C" {
 int test_can_loopback_start(void);
 int test_pwm_led_start(void);
 int test_imu_uart_start(void);
+int test_imu_justfloat_start(void);
+int test_imu_temp_start(void);
 int test_bmi088_minimal_start(void);
 int test_ist8310_minimal_start(void);
 

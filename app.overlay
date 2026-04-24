@@ -19,8 +19,8 @@
 	zephyr,user {
 		ist8310-reset-gpios = <&gpiog 6 GPIO_ACTIVE_LOW>;
 		ist8310-drdy-gpios  = <&gpiog 3 GPIO_ACTIVE_HIGH>;
-		pwms = <&pwm_heater 0 1000000 PWM_POLARITY_NORMAL>,
-		       <&pwm1 0 1000000000 PWM_POLARITY_NORMAL>;
+		pwms = <&pwm_heater 1 5000000 PWM_POLARITY_NORMAL>,
+		       <&pwm1 1 1000000000 PWM_POLARITY_NORMAL>;
 		pwm-names = "heater", "blink";
 	};
 };
@@ -46,7 +46,7 @@
 	status = "okay";
 };
 
-/* IMU 恒温加热 TIM10_CH1 => PF6，tick = 1 MHz, PWM 周期 1 kHz */
+/* IMU 恒温加热 TIM10_CH1 => PF6，tick = 1 MHz, PWM 周期 5 ms (200 Hz) */
 &timers10 {
 	status = "okay";
 	st,prescaler = <167>;

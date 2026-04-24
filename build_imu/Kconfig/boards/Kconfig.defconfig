@@ -1,0 +1,2 @@
+# Load Zephyr board defconfig descriptions.
+osource "E:/zephyr_repo/RM_C_template/boards/st/RM_C/Kconfig.defconfig"

@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  *
- * 当前主程序只启动 BMI088 和 IST8310 的独立最小测试。
+ * 当前主程序只启动 IMU 温度最小测试。
  */
 
 #include <zephyr/kernel.h>
@@ -17,19 +17,12 @@ int main(void)
 {
 	int rc;
 
-	LOG_INF("=== IMU minimal tests: BMI088 + IST8310 ===");
+	LOG_INF("=== IMU temperature minimal test ===");
 	k_msleep(200);
 
-	uart_minimal_test();
-
-	rc = test_bmi088_minimal_start();
+	rc = test_imu_temp_start();
 	if (rc < 0) {
-		LOG_ERR("BMI088 minimal test start failed: %d", rc);
-	}
-
-	rc = test_ist8310_minimal_start();
-	if (rc < 0) {
-		LOG_ERR("IST8310 minimal test start failed: %d", rc);
+		LOG_ERR("IMU temp test start failed: %d", rc);
 	}
 
 	while (1) {
