@@ -53,7 +53,7 @@ LOG_MODULE_REGISTER(imu_9axis, CONFIG_SENSOR_LOG_LEVEL);
 #define IMU_ACCEL_CORRECT_MAX_NORM 13.0f
 #define IMU_MAHONY_TWO_KP          2.0f
 #define IMU_MAHONY_TWO_KI          0.02f
-#define IMU_MAHONY_MAG_WEIGHT      0.20f
+#define IMU_MAHONY_MAG_WEIGHT      0.6f
 
 #define IMU_HEATER_TARGET_TEMP_C      40.0f
 #define IMU_HEATER_PID_KP             1000.0f
