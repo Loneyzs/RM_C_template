@@ -16,7 +16,7 @@
 - 每次上电做 gyro 零偏标定，要求启动时保持静止。
 - accel 平放校准已改为固定参数，不再每次上电自动估计。
 - 姿态融合使用 Mahony 四元数更新，输出 `roll/pitch/yaw`，单位为 `rad`。
-- IST8310 磁力计参与 yaw 修正，但权重较低；未做硬铁/软铁校准前，不应把 yaw 绝对精度视为可靠。
+- IST8310 磁力计参与 yaw 修正；当前权重已经按实测优化，但未做硬铁/软铁校准前，不应把 yaw 绝对精度视为可靠。
 
 ## 参数区
 
@@ -75,14 +75,14 @@ raw avg = (0.029985, -0.080403, 9.759632) m/s^2
 #define IMU_ACCEL_CORRECT_MAX_NORM 13.0f
 #define IMU_MAHONY_TWO_KP          2.0f
 #define IMU_MAHONY_TWO_KI          0.02f
-#define IMU_MAHONY_MAG_WEIGHT      0.20f
+#define IMU_MAHONY_MAG_WEIGHT      0.6f
 ```
 
 含义：
 
 - `IMU_MAHONY_TWO_KP`：姿态误差比例修正，越大收敛越快，也越容易抖。
 - `IMU_MAHONY_TWO_KI`：慢速积分修正，主要压低低频漂移，过大会拖出低频振荡。
-- `IMU_MAHONY_MAG_WEIGHT`：磁力计 yaw 修正权重，未磁校准前建议保持小。
+- `IMU_MAHONY_MAG_WEIGHT`：磁力计 yaw 修正权重；当前值来自本板实测优化，若换环境或换板后 yaw 抖动，应优先回调该值。
 - `IMU_ACCEL_CORRECT_MIN/MAX_NORM`：加速度模长门限，运动剧烈时跳过 accel 修正，避免把线加速度当重力。
 
 建议调试顺序：
