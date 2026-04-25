@@ -2,7 +2,7 @@
  * PWM1 + LED_G 最小测试。
  */
 
-#include "unit_tests.h"
+#include "board_package/unit_tests/unit_tests.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -83,3 +83,4 @@ int test_pwm_led_start(void)
 	LOG_INF("PWM1 blink test started (1 Hz default, PE9 + LED_G)");
 	return 0;
 }
+

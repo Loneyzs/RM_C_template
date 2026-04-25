@@ -3,8 +3,6 @@
  * 直接分别读取 accel/gyro，不经过九轴融合层。
  */
 
-#include "minimal_test_serial.h"
-
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -14,7 +12,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-#include "unit_tests.h"
+#include "board_package/unit_tests/unit_tests.h"
 
 LOG_MODULE_REGISTER(test_bmi088, LOG_LEVEL_INF);
 
@@ -72,8 +70,7 @@ static void bmi088_test_thread(void *a, void *b, void *c)
 		}
 
 		if (rc_acc < 0 || rc_gyr < 0) {
-			minimal_test_serial_printf(
-				"BMI088 ERR seq=%lu acc_rc=%d gyr_rc=%d\r\n",
+			LOG_WRN("BMI088 ERR seq=%lu acc_rc=%d gyr_rc=%d",
 				(unsigned long)seq, rc_acc, rc_gyr);
 			k_msleep(BMI088_TEST_PERIOD_MS);
 			seq++;
@@ -83,8 +80,7 @@ static void bmi088_test_thread(void *a, void *b, void *c)
 		anorm = sqrtf(accel[0] * accel[0] + accel[1] * accel[1] + accel[2] * accel[2]);
 		gnorm = sqrtf(gyro[0] * gyro[0] + gyro[1] * gyro[1] + gyro[2] * gyro[2]);
 
-		minimal_test_serial_printf(
-			"BMI088 OK seq=%lu acc=(%.3f,%.3f,%.3f) |a|=%.3f gyro=(%.3f,%.3f,%.3f) |g|=%.3f temp=%.2f\r\n",
+		LOG_INF("BMI088 OK seq=%lu acc=(%.3f,%.3f,%.3f) |a|=%.3f gyro=(%.3f,%.3f,%.3f) |g|=%.3f temp=%.2f",
 			(unsigned long)seq,
 			(double)accel[0], (double)accel[1], (double)accel[2], (double)anorm,
 			(double)gyro[0], (double)gyro[1], (double)gyro[2], (double)gnorm,
@@ -108,11 +104,6 @@ int test_bmi088_start(void)
 		LOG_ERR("bmi088-gyro not ready");
 		return -ENODEV;
 	}
-	if (minimal_test_serial_init() < 0) {
-		return -ENODEV;
-	}
-
-	minimal_test_serial_write("BMI088_TEST_START\r\n");
 
 	k_thread_create(&bmi088_test_thread_data, bmi088_test_stack,
 			K_THREAD_STACK_SIZEOF(bmi088_test_stack),
@@ -124,3 +115,4 @@ int test_bmi088_start(void)
 	LOG_INF("BMI088 minimal test started");
 	return 0;
 }
+

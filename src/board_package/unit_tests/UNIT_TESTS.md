@@ -1,20 +1,27 @@
 # 最小测试说明
 
-最小测试代码统一放在 [src/minimal_tests](</E:/zephyr_repo/RM_C_Template/src/minimal_tests>)。命名规则：
+最小测试代码统一放在 [src/board_package/unit_tests](</E:/zephyr_repo/RM_C_Template/src/board_package/unit_tests>)。命名规则：
 
 - 文件：`<name>_test.c`
 - 入口：`test_<name>_start()`
-- 共享串口工具：`minimal_test_serial.*`
+- 串口输出：需要串口的测试均在本文件内直接使用板上 `UART2`，芯片外设为 `USART1`，不依赖其它测试文件。
 
-## 默认入口
+## 运行方式
 
-[src/main.c](</E:/zephyr_repo/RM_C_Template/src/main.c:1>) 当前只启动：
+[src/main.c](</E:/zephyr_repo/RM_C_Template/src/main.c:1>) 默认保持最小模板形态。需要运行某个测试时，手动包含入口头文件并调用一个测试入口：
 
 ```c
-test_imu_justfloat_start();
+#include "board_package/unit_tests/unit_tests.h"
+
+int main(void)
+{
+	(void)test_imu_justfloat_start();
+
+	return 0;
+}
 ```
 
-输出串口为板上 `UART2`，芯片外设为 `USART1`，当前 PC 侧为 `COM11`。
+UART、IMU Temp、IMU JustFloat 的串口输出统一走板上 `UART2`，芯片外设为 `USART1`，当前 PC 侧为 `COM11`。BMI088、IST8310、PWM、CAN 测试只使用 RTT 日志输出。
 
 ```powershell
 plink -serial COM11 -sercfg 115200,8,n,1,N
@@ -29,7 +36,7 @@ plink -serial COM11 -sercfg 115200,8,n,1,N
 | `can_loopback_test.c` | `test_can_loopback_start()` | 验证 CAN1 loopback |
 | `bmi088_test.c` | `test_bmi088_start()` | 直接读取 BMI088 accel/gyro/temp |
 | `ist8310_test.c` | `test_ist8310_start()` | 直接读取 IST8310 mag |
-| `imu_temp_test.c` | `test_imu_temp_start()` | 观察 IMU 温度与 heater 输出 |
+| `imu_temperature_test.c` | `test_imu_temp_start()` | 观察 IMU 温度与 heater 输出 |
 | `imu_justfloat_test.c` | `test_imu_justfloat_start()` | 输出融合后的 roll/pitch/yaw，JustFloat 格式 |
 
 ## 输出格式
@@ -37,7 +44,7 @@ plink -serial COM11 -sercfg 115200,8,n,1,N
 ### UART
 
 ```text
-UART_TEST_OK
+UART2_TEST_OK
 ```
 
 ### BMI088
@@ -89,6 +96,3 @@ tail = 00 00 80 7F
 - `roll/pitch/yaw` 均为 `rad`。
 - 上位机按 3 通道 float + JustFloat 帧尾解析。
 
-## 已删除内容
-
-旧的 `test_imu_uart.c` 已删除。它和 `imu_justfloat_test.c` 都输出姿态到串口，但旧文件绕过融合结果重新用 accel/mag 计算欧拉角，会和当前 Mahony 输出产生歧义。

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "imu_9axis.h"
+#include "drivers/imu/imu_9axis.h"
 
 #include <math.h>
 #include <stdbool.h>

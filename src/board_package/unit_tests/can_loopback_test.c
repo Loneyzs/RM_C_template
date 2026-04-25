@@ -2,7 +2,7 @@
  * CAN1 硬件回环最小测试。
  */
 
-#include "unit_tests.h"
+#include "board_package/unit_tests/unit_tests.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -124,3 +124,4 @@ int test_can_loopback_start(void)
 	LOG_INF("CAN1 loopback test started @ 500 kbit/s");
 	return 0;
 }
+

@@ -3,8 +3,8 @@
  * 通过 UART2 以 justfloat 格式输出 roll / pitch / yaw。
  */
 
-#include "imu_9axis.h"
-#include "unit_tests.h"
+#include "drivers/imu/imu_9axis.h"
+#include "board_package/unit_tests/unit_tests.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -18,11 +18,11 @@
 
 LOG_MODULE_REGISTER(test_imu_justfloat, LOG_LEVEL_INF);
 
-#define UART_NODE            DT_NODELABEL(usart1)
+#define UART2_NODE           DT_NODELABEL(usart1)
 #define IMU_JF_PERIOD_MS     20U
 #define IMU_HEATER_DUTY      50U
 
-static const struct device *const uart_dev = DEVICE_DT_GET(UART_NODE);
+static const struct device *const uart2_dev = DEVICE_DT_GET(UART2_NODE);
 
 K_THREAD_STACK_DEFINE(imu_justfloat_stack, 1792);
 static struct k_thread imu_justfloat_thread_data;
@@ -33,7 +33,7 @@ static const uint8_t justfloat_tail[4] = {0x00, 0x00, 0x80, 0x7F};
 static void uart_write_bytes(const uint8_t *buf, size_t len)
 {
 	for (size_t i = 0; i < len; i++) {
-		uart_poll_out(uart_dev, buf[i]);
+		uart_poll_out(uart2_dev, buf[i]);
 	}
 }
 
@@ -100,8 +100,8 @@ int test_imu_justfloat_start(void)
 		return 0;
 	}
 
-	if (!device_is_ready(uart_dev)) {
-		LOG_ERR("USART1 not ready");
+	if (!device_is_ready(uart2_dev)) {
+		LOG_ERR("UART2 (USART1) not ready");
 		return -ENODEV;
 	}
 
@@ -121,3 +121,4 @@ int test_imu_justfloat_start(void)
 	LOG_INF("IMU justfloat test started @ %u ms", IMU_JF_PERIOD_MS);
 	return 0;
 }
+

@@ -9,32 +9,24 @@ project(RM_C_Template)
 
 set(APP_SOURCES
     src/main.c
-    src/imu/imu_board_init.c
-    src/imu/imu_9axis.c
-    src/minimal_tests/minimal_test_serial.c
-    src/minimal_tests/uart_test.c
-    src/minimal_tests/pwm_led_test.c
-    src/minimal_tests/can_loopback_test.c
-    src/minimal_tests/bmi088_test.c
-    src/minimal_tests/ist8310_test.c
-    src/minimal_tests/imu_temp_test.c
-    src/minimal_tests/imu_justfloat_test.c
+    src/drivers/imu/imu_board_init.c
+    src/drivers/imu/imu_9axis.c
+    src/board_package/unit_tests/uart_test.c
+    src/board_package/unit_tests/pwm_led_test.c
+    src/board_package/unit_tests/can_loopback_test.c
+    src/board_package/unit_tests/bmi088_test.c
+    src/board_package/unit_tests/ist8310_test.c
+    src/board_package/unit_tests/imu_temperature_test.c
+    src/board_package/unit_tests/imu_justfloat_test.c
 )
 
 target_sources(app PRIVATE ${APP_SOURCES})
 
-target_include_directories(app PRIVATE
-    include
-)
+target_include_directories(app PRIVATE include)
 
 target_compile_options(app PRIVATE
     -Wall
     -Wextra
-)
-
-target_compile_definitions(app PRIVATE
-    APP_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
-    APP_VERSION_MINOR=${PROJECT_VERSION_MINOR}
 )
 
 if(CONFIG_DEBUG)

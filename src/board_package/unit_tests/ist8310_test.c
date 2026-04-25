@@ -3,8 +3,6 @@
  * 直接读取磁力计输出，不经过九轴融合层。
  */
 
-#include "minimal_test_serial.h"
-
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -14,7 +12,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-#include "unit_tests.h"
+#include "board_package/unit_tests/unit_tests.h"
 
 LOG_MODULE_REGISTER(test_ist8310, LOG_LEVEL_INF);
 
@@ -67,8 +65,7 @@ static void ist8310_test_thread(void *a, void *b, void *c)
 		int rc = fetch_mag_xyz(mag);
 
 		if (rc < 0) {
-			minimal_test_serial_printf("IST8310 ERR seq=%lu rc=%d\r\n",
-						   (unsigned long)seq, rc);
+			LOG_WRN("IST8310 ERR seq=%lu rc=%d", (unsigned long)seq, rc);
 			k_msleep(IST8310_TEST_PERIOD_MS);
 			seq++;
 			continue;
@@ -76,8 +73,7 @@ static void ist8310_test_thread(void *a, void *b, void *c)
 
 		float mnorm = sqrtf(mag[0] * mag[0] + mag[1] * mag[1] + mag[2] * mag[2]);
 
-		minimal_test_serial_printf(
-			"IST8310 OK seq=%lu mag=(%.3f,%.3f,%.3f) |m|=%.3f\r\n",
+		LOG_INF("IST8310 OK seq=%lu mag=(%.3f,%.3f,%.3f) |m|=%.3f",
 			(unsigned long)seq,
 			(double)mag[0], (double)mag[1], (double)mag[2], (double)mnorm);
 		k_msleep(IST8310_TEST_PERIOD_MS);
@@ -95,11 +91,6 @@ int test_ist8310_start(void)
 		LOG_ERR("ist8310 not ready");
 		return -ENODEV;
 	}
-	if (minimal_test_serial_init() < 0) {
-		return -ENODEV;
-	}
-
-	minimal_test_serial_write("IST8310_TEST_START\r\n");
 
 	k_thread_create(&ist8310_test_thread_data, ist8310_test_stack,
 			K_THREAD_STACK_SIZEOF(ist8310_test_stack),
@@ -111,3 +102,4 @@ int test_ist8310_start(void)
 	LOG_INF("IST8310 minimal test started");
 	return 0;
 }
+

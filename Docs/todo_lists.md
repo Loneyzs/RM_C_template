@@ -4,14 +4,15 @@ RoboMaster C 型开发板 Zephyr 最小模板工程。
 
 ### 当前状态
 
-* 板级设备树已覆盖主要板载外设：RTT console、USART1（丝印 UART2）、SPI1、I2C3、PWM、CAN1。
+* 板级设备树已覆盖主要板载外设：RTT console、UART2（芯片外设 USART1）、SPI1、I2C3、PWM、CAN1。
 * BMI088 accel/gyro 与 IST8310 已走 Zephyr 上游 sensor 驱动。
-* IMU 九轴聚合层已接入：`include/imu_9axis.h` + `src/imu/imu_9axis.c`。
+* IMU 九轴聚合层已接入：`include/drivers/imu/imu_9axis.h` + `src/drivers/imu/imu_9axis.c`。
 * IMU 姿态融合已从互补滤波升级为 Mahony。
 * 每次上电执行 gyro 零偏标定。
 * accel 平放校准已完成一次实测，并固化为固定偏置参数。
-* 默认 main 入口运行 `test_imu_justfloat_start()`，通过 USART1/COM11 输出 JustFloat 三通道姿态。
-* 最小测试已统一整理到 `src/minimal_tests/`，命名为 `<name>_test.c` + `test_<name>_start()`。
+* `main` 已回到最小模板形态；需要验证外设时手动调用 `board_package` 内的测试入口。
+* 最小测试已统一整理到 `src/board_package/`，命名为 `<name>_test.c` + `test_<name>_start()`。
+* 需要串口输出的最小测试统一使用板上 `UART2`；各测试文件直接使用对应 devicetree 节点，不依赖其它测试文件。
 * 当前各项外设/IMU 最小功能测试已通过，可作为后续应用开发模板。
 
 ### 保留测试入口

@@ -6,9 +6,9 @@
 
 入口文件：
 
-- 接口定义：[include/imu_9axis.h](</E:/zephyr_repo/RM_C_Template/include/imu_9axis.h:1>)
-- 实现文件：[src/imu/imu_9axis.c](</E:/zephyr_repo/RM_C_Template/src/imu/imu_9axis.c:1>)
-- 默认运行：[src/main.c](</E:/zephyr_repo/RM_C_Template/src/main.c:1>) 启动 `test_imu_justfloat_start()`
+- 接口定义：[include/drivers/imu/imu_9axis.h](</E:/zephyr_repo/RM_C_Template/include/drivers/imu/imu_9axis.h:1>)
+- 实现文件：[src/drivers/imu/imu_9axis.c](</E:/zephyr_repo/RM_C_Template/src/drivers/imu/imu_9axis.c:1>)
+- 测试入口：[src/board_package/unit_tests](</E:/zephyr_repo/RM_C_Template/src/board_package/unit_tests>) 保留 `test_imu_temp_start()` 与 `test_imu_justfloat_start()`。
 
 当前融合链路：
 
@@ -20,7 +20,7 @@
 
 ## 参数区
 
-主要参数集中在 [src/imu/imu_9axis.c](</E:/zephyr_repo/RM_C_Template/src/imu/imu_9axis.c:41>)。
+主要参数集中在 [src/drivers/imu/imu_9axis.c](</E:/zephyr_repo/RM_C_Template/src/drivers/imu/imu_9axis.c:41>)。
 
 ### 上电 gyro 零偏
 
